@@ -1,0 +1,12 @@
+variants = ["bootloader", "application"]
+
+[disk]
+size = 0x800000
+alignment = 0x1000
+
+[partitions]
+slot_secundary = { offset = 0x0, size = 0x18000 }
+bl_swap = { offset = 0x18000, size = 0x1000 }
+bl_state = { offset = 0x30000, size = 0x2000 }
+app_settings = { offset = 0x32000, size = 0xe000, access = { application = "rw" } }
+app_state = { offset = 0x400000, size = 0x400000, access = { application = "rw" } }

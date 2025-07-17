@@ -1,0 +1,9 @@
+variants = ["bootloader", "application"]
+
+[disk]
+size = 0x20000
+alignment = 0x800
+
+[partitions]
+bootloader = { offset = 0x0, size = 0x8000 }
+slot_primary = { offset = 0x8000, size = 0x18000 }
