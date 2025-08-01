@@ -3,6 +3,9 @@
 
 pub mod strategies;
 
+#[cfg(test)]
+mod mock;
+
 #[derive(Debug)]
 pub struct Error;
 
