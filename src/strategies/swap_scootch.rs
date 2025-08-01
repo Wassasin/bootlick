@@ -116,8 +116,6 @@ impl Strategy for SwapScootch {
 
 #[cfg(test)]
 mod tests {
-    extern crate std;
-
     use crate::{
         Device,
         mock::{IMAGE_A, IMAGE_B, MockDevice, PAGE_COUNT},
@@ -154,5 +152,9 @@ mod tests {
 
         assert_eq!(device.primary, IMAGE_B);
         assert_eq!(device.secondary, IMAGE_A);
+
+        assert!(device.wear.check_slot(PRIMARY, 2));
+        assert!(device.wear.check_slot(SECONDARY, 1));
+        assert!(device.wear.check_slot(SCRATCH, 1));
     }
 }

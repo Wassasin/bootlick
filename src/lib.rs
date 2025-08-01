@@ -4,6 +4,9 @@
 pub mod strategies;
 
 #[cfg(test)]
+extern crate std;
+
+#[cfg(test)]
 mod mock;
 
 #[derive(Debug)]
@@ -28,7 +31,7 @@ pub trait Device {
 /// Image slot with regards to the bootloader.
 ///
 /// Memory layout describes in which memory and at what location each slot resides.
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Slot(pub(crate) u8);
 
 /// Page number with regards to the bootloader.
@@ -40,7 +43,7 @@ pub struct Slot(pub(crate) u8);
 ///
 /// For example: with a 1K page size for primary memory and 4K page size for secondary memory,
 /// `Page(0)` is 4K large and covers 4 physical pages in primary memory.
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Page(pub(crate) u16);
 
 /// Step number of a specific strategy that has to be or has been executed.
@@ -49,10 +52,10 @@ pub struct Page(pub(crate) u16);
 /// Step numbers are strictly monotonical.
 /// Every step can be interrupted at any time, and after a step has been executed this has to be recorded in the persistant state.
 /// If the step is executed, but not yet recorded in the persistant state, it must be valid to execute the step again.
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct Step(pub(crate) u16);
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct MemoryLocation {
     slot: Slot,
     page: Page,
