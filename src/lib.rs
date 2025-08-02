@@ -28,6 +28,7 @@ pub trait Device {
     fn page_count(&self) -> NonZeroU16;
 }
 
+/// A device that has a scratch memory which can be used to swap images.
 pub trait DeviceWithScratch: Device {
     /// Number of pages available in the scratch memory.
     fn scratch_page_count(&self) -> NonZeroU16;
@@ -35,9 +36,13 @@ pub trait DeviceWithScratch: Device {
     fn get_scratch(&self) -> Slot;
 }
 
+/// A device that has a primary image slot for which images can be booted.
 pub trait DeviceWithPrimarySlot: Device {
     fn get_primary(&self) -> Slot;
 }
+
+/// Marker trait to indicate that the device can boot from all image slots.
+pub trait DeviceSupportsXip: Device {}
 
 /// Image slot with regards to the bootloader.
 ///
