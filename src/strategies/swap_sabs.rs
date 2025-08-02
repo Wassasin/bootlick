@@ -11,13 +11,21 @@
 
 use core::num::NonZeroU16;
 
-use crate::{CopyOperation, MemoryLocation, Page, Slot, Step, strategies::Strategy};
+use crate::{
+    CopyOperation, Device, DeviceWithPrimarySlot, DeviceWithScratch, MemoryLocation, Page, Slot,
+    Step, strategies::Strategy,
+};
+
+#[derive(Clone, Debug)]
+pub struct Request {
+    pub slot_secondary: Slot,
+}
 
 pub struct SwapSABS {
+    request: Request,
     num_pages: NonZeroU16,
     scratch_pages: NonZeroU16,
     slot_primary: Slot,
-    slot_secondary: Slot,
     slot_scratch: Slot,
 }
 
@@ -42,6 +50,21 @@ impl Phase {
         let start = Page((step.0 / 3) * scratch_pages.get());
 
         (destination, start)
+    }
+}
+
+impl SwapSABS {
+    pub fn new(
+        device: &(impl Device + DeviceWithScratch + DeviceWithPrimarySlot),
+        request: Request,
+    ) -> Self {
+        Self {
+            request,
+            num_pages: device.page_count(),
+            scratch_pages: device.scratch_page_count(),
+            slot_primary: device.get_primary(),
+            slot_scratch: device.get_scratch(),
+        }
     }
 }
 
@@ -71,7 +94,7 @@ impl Strategy for SwapSABS {
             ),
             Phase::B2A => (
                 MemoryLocation {
-                    slot: self.slot_secondary,
+                    slot: self.request.slot_secondary,
                     page: start,
                 },
                 MemoryLocation {
@@ -85,7 +108,7 @@ impl Strategy for SwapSABS {
                     page: Page(0),
                 },
                 MemoryLocation {
-                    slot: self.slot_secondary,
+                    slot: self.request.slot_secondary,
                     page: start,
                 },
             ),
@@ -116,18 +139,11 @@ mod tests {
 
     use super::*;
 
-    const PRIMARY: Slot = Slot(0);
-    const SECONDARY: Slot = Slot(1);
-    const SCRATCH: Slot = Slot(2);
-
-    fn perform_copy(device: &mut (impl Device + DeviceWithScratch)) {
-        let strategy = SwapSABS {
-            num_pages: device.page_count(),
-            scratch_pages: device.scratch_page_count(),
-            slot_primary: PRIMARY,
-            slot_secondary: SECONDARY,
-            slot_scratch: SCRATCH,
-        };
+    fn perform_copy(
+        device: &mut (impl Device + DeviceWithScratch + DeviceWithPrimarySlot),
+        slot_secondary: Slot,
+    ) {
+        let strategy = SwapSABS::new(device, Request { slot_secondary });
 
         for step_i in 0..strategy.last_step().0 {
             let step = Step(step_i);
@@ -142,14 +158,16 @@ mod tests {
 
     #[test]
     fn single_scratch() {
-        use crate::mock::single_scratch::{IMAGE_A, IMAGE_B, MockDevice};
+        use crate::mock::single_scratch::{
+            IMAGE_A, IMAGE_B, MockDevice, PRIMARY, SCRATCH, SECONDARY,
+        };
 
         let mut device = MockDevice::new();
 
         assert_eq!(device.primary, IMAGE_A);
         assert_eq!(device.secondary, IMAGE_B);
 
-        perform_copy(&mut device);
+        perform_copy(&mut device, SECONDARY);
 
         assert_eq!(device.primary, IMAGE_B);
         assert_eq!(device.secondary, IMAGE_A);
@@ -165,14 +183,16 @@ mod tests {
 
     #[test]
     fn multi_scratch() {
-        use crate::mock::multi_scratch::{IMAGE_A, IMAGE_B, MockDevice};
+        use crate::mock::multi_scratch::{
+            IMAGE_A, IMAGE_B, MockDevice, PRIMARY, SCRATCH, SECONDARY,
+        };
 
         let mut device = MockDevice::new();
 
         assert_eq!(device.primary, IMAGE_A);
         assert_eq!(device.secondary, IMAGE_B);
 
-        perform_copy(&mut device);
+        perform_copy(&mut device, SECONDARY);
 
         assert_eq!(device.primary, IMAGE_B);
         assert_eq!(device.secondary, IMAGE_A);

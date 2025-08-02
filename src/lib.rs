@@ -31,6 +31,12 @@ pub trait Device {
 pub trait DeviceWithScratch: Device {
     /// Number of pages available in the scratch memory.
     fn scratch_page_count(&self) -> NonZeroU16;
+
+    fn get_scratch(&self) -> Slot;
+}
+
+pub trait DeviceWithPrimarySlot: Device {
+    fn get_primary(&self) -> Slot;
 }
 
 /// Image slot with regards to the bootloader.

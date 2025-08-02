@@ -1,6 +1,9 @@
 use core::num::NonZeroU16;
 
-use crate::{CopyOperation, Device, DeviceWithScratch, MemoryLocation, Slot, mock::WearTracker};
+use crate::{
+    CopyOperation, Device, DeviceWithPrimarySlot, DeviceWithScratch, MemoryLocation, Slot,
+    mock::WearTracker,
+};
 
 const PAGE_COUNT: NonZeroU16 = NonZeroU16::new(10).unwrap();
 const SCRATCH_PAGE_COUNT: NonZeroU16 = NonZeroU16::new(3).unwrap();
@@ -17,6 +20,10 @@ pub const IMAGE_A: [u8; PAGE_COUNT.get() as usize] =
 pub const IMAGE_B: [u8; PAGE_COUNT.get() as usize] =
     [0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14];
 
+pub const PRIMARY: Slot = Slot(0);
+pub const SECONDARY: Slot = Slot(1);
+pub const SCRATCH: Slot = Slot(2);
+
 impl MockDevice {
     pub const fn new() -> MockDevice {
         MockDevice {
@@ -29,9 +36,9 @@ impl MockDevice {
 
     fn get_mut(&mut self, addr: MemoryLocation) -> &mut u8 {
         match addr.slot {
-            Slot(0) => self.primary.as_mut_slice(),
-            Slot(1) => self.secondary.as_mut_slice(),
-            Slot(2) => self.scratch.as_mut_slice(),
+            PRIMARY => self.primary.as_mut_slice(),
+            SECONDARY => self.secondary.as_mut_slice(),
+            SCRATCH => self.scratch.as_mut_slice(),
             _ => unimplemented!(),
         }
         .get_mut(addr.page.0 as usize)
@@ -61,5 +68,15 @@ impl Device for MockDevice {
 impl DeviceWithScratch for MockDevice {
     fn scratch_page_count(&self) -> NonZeroU16 {
         SCRATCH_PAGE_COUNT
+    }
+
+    fn get_scratch(&self) -> Slot {
+        SCRATCH
+    }
+}
+
+impl DeviceWithPrimarySlot for MockDevice {
+    fn get_primary(&self) -> Slot {
+        PRIMARY
     }
 }
