@@ -2,3 +2,5 @@
 //!
 //! This is useful if you have sufficient memory on the board to keep all versions around, but only one type of memory from which
 //! the application can be executed. (for example: MCU flash and a on-pcb NOR flash module, for which the module has plenty of space left)
+//!
+//! Another advantage is that it does not require a scratch page.

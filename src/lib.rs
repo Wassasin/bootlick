@@ -1,6 +1,8 @@
 //! Toolkit for building your own bootloader, tailored to your needs.
 #![no_std]
 
+use core::num::NonZeroU16;
+
 pub mod strategies;
 
 #[cfg(test)]
@@ -18,14 +20,17 @@ pub trait Device {
     /// Copy a page from one memory to another.
     async fn copy(&mut self, operation: CopyOperation) -> Result<(), Error>;
 
-    /// Last page of any slot.
-    ///
-    /// All slots should have the same memory size.
-    /// Note that these are `Page` in the bootloader sense, which is decoupled from the underlying memory storage.
-    async fn last_page(&self) -> Page;
-
     /// Boot a specific memory slot.
     fn boot(slot: Slot) -> !;
+
+    /// All image slots should have the same memory size.
+    /// Note that these are `Page` in the bootloader sense, which is decoupled from the underlying memory storage.
+    fn page_count(&self) -> NonZeroU16;
+}
+
+pub trait DeviceWithScratch: Device {
+    /// Number of pages available in the scratch memory.
+    fn scratch_page_count(&self) -> NonZeroU16;
 }
 
 /// Image slot with regards to the bootloader.

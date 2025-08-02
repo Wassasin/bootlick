@@ -17,7 +17,7 @@ impl Strategy for Xip {
         Step(0)
     }
 
-    fn plan(&self, _step: crate::Step) -> crate::CopyOperation {
-        panic!("No copy operation is applicable for XIP")
+    fn plan(&self, _step: crate::Step) -> impl Iterator<Item = crate::CopyOperation> {
+        core::iter::empty()
     }
 }

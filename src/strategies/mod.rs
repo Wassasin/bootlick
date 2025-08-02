@@ -14,6 +14,6 @@ pub trait Strategy {
     /// **Warning**: for this specific step and any subsequent step planning a `CopyOperation` is undefined behaviour.
     fn last_step(&self) -> Step;
 
-    /// Plan the operation to be executed for a given step.
-    fn plan(&self, step: Step) -> CopyOperation;
+    /// Plan the operations to be executed for a given step.
+    fn plan(&self, step: Step) -> impl Iterator<Item = CopyOperation>;
 }

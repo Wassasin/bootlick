@@ -1,8 +1,10 @@
+use core::num::NonZeroU16;
 use std::collections::BTreeMap;
 
-use crate::{CopyOperation, Device, MemoryLocation, Page, Slot};
+use crate::{CopyOperation, Device, DeviceWithScratch, MemoryLocation, Slot};
 
-pub const PAGE_COUNT: u16 = 3;
+const PAGE_COUNT: NonZeroU16 = NonZeroU16::new(3).unwrap();
+const SCRATCH_PAGE_COUNT: NonZeroU16 = NonZeroU16::new(1).unwrap();
 
 #[derive(Debug)]
 pub struct WearTracker(BTreeMap<MemoryLocation, usize>);
@@ -30,14 +32,14 @@ impl WearTracker {
 }
 
 pub struct MockDevice {
-    pub primary: [u8; PAGE_COUNT as usize],
-    pub secondary: [u8; PAGE_COUNT as usize],
-    pub scratch: [u8; 1],
+    pub primary: [u8; PAGE_COUNT.get() as usize],
+    pub secondary: [u8; PAGE_COUNT.get() as usize],
+    pub scratch: [u8; SCRATCH_PAGE_COUNT.get() as usize],
     pub wear: WearTracker,
 }
 
-pub const IMAGE_A: [u8; PAGE_COUNT as usize] = [0x01, 0x02, 0x03];
-pub const IMAGE_B: [u8; PAGE_COUNT as usize] = [0x04, 0x05, 0x06];
+pub const IMAGE_A: [u8; PAGE_COUNT.get() as usize] = [0x01, 0x02, 0x03];
+pub const IMAGE_B: [u8; PAGE_COUNT.get() as usize] = [0x04, 0x05, 0x06];
 
 impl MockDevice {
     pub const fn new() -> MockDevice {
@@ -71,11 +73,17 @@ impl Device for MockDevice {
         Ok(())
     }
 
-    async fn last_page(&self) -> Page {
-        Page(PAGE_COUNT)
-    }
-
     fn boot(_slot: Slot) -> ! {
         unimplemented!()
+    }
+
+    fn page_count(&self) -> core::num::NonZeroU16 {
+        PAGE_COUNT
+    }
+}
+
+impl DeviceWithScratch for MockDevice {
+    fn scratch_page_count(&self) -> NonZeroU16 {
+        SCRATCH_PAGE_COUNT
     }
 }

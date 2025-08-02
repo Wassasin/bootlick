@@ -11,10 +11,12 @@
 //!
 //! **TODO** Does it help if the scratch memory spans multiple pages? => number of steps?
 
+use core::num::NonZeroU16;
+
 use crate::{CopyOperation, MemoryLocation, Page, Slot, Step, strategies::Strategy};
 
 pub struct SwapScootch {
-    num_pages: u16,
+    num_pages: NonZeroU16,
     slot_primary: Slot,
     slot_secondary: Slot,
     slot_scratch: Slot,
@@ -32,15 +34,15 @@ enum Phase {
 }
 
 impl Phase {
-    pub const fn from_step(mut step: Step, num_pages: u16) -> Phase {
-        if step.0 < num_pages {
+    pub const fn from_step(mut step: Step, num_pages: NonZeroU16) -> Phase {
+        if step.0 < num_pages.get() {
             return Phase::Scootch(Page(step.0));
         }
 
-        step.0 -= num_pages;
+        step.0 -= num_pages.get();
 
         // Copy the other pages in reverse order.
-        let page = Page(num_pages - (step.0 / 2) - 1);
+        let page = Page(num_pages.get() - (step.0 / 2) - 1);
         if step.0 % 2 == 0 {
             Phase::ToPrimary(page)
         } else {
@@ -62,14 +64,14 @@ impl SwapScootch {
 impl Strategy for SwapScootch {
     fn last_step(&self) -> Step {
         // A single move for scootch, and two copies for swap, plus a single step for boot.
-        Step(self.num_pages * 3)
+        Step(self.num_pages.get() * 3)
     }
 
-    fn plan(&self, step: Step) -> CopyOperation {
+    fn plan(&self, step: Step) -> impl Iterator<Item = CopyOperation> {
         let phase = Phase::from_step(step, self.num_pages);
 
         // Convert a logical phase into a raw copy operation.
-        match phase {
+        let op = match phase {
             Phase::Scootch(page) => CopyOperation {
                 from: MemoryLocation {
                     slot: self.slot_primary,
@@ -110,7 +112,9 @@ impl Strategy for SwapScootch {
                     page,
                 },
             },
-        }
+        };
+
+        core::iter::once(op)
     }
 }
 
@@ -118,7 +122,7 @@ impl Strategy for SwapScootch {
 mod tests {
     use crate::{
         Device,
-        mock::{IMAGE_A, IMAGE_B, MockDevice, PAGE_COUNT},
+        mock::{IMAGE_A, IMAGE_B, MockDevice},
     };
 
     use super::*;
@@ -127,27 +131,27 @@ mod tests {
     const SECONDARY: Slot = Slot(1);
     const SCRATCH: Slot = Slot(2);
 
-    const STRATEGY: SwapScootch = SwapScootch {
-        num_pages: PAGE_COUNT,
-        slot_primary: PRIMARY,
-        slot_secondary: SECONDARY,
-        slot_scratch: SCRATCH,
-    };
-
     #[test]
-    fn scootch() {
+    fn small() {
         let mut device = MockDevice::new();
+
+        let strategy = SwapScootch {
+            num_pages: device.page_count(),
+            slot_primary: PRIMARY,
+            slot_secondary: SECONDARY,
+            slot_scratch: SCRATCH,
+        };
 
         assert_eq!(device.primary, IMAGE_A);
         assert_eq!(device.secondary, IMAGE_B);
 
-        for step_i in 0..STRATEGY.last_step().0 {
+        for step_i in 0..strategy.last_step().0 {
             let step = Step(step_i);
-            let operation = STRATEGY.plan(step);
-
-            embassy_futures::block_on(async {
-                device.copy(operation).await.unwrap();
-            })
+            for operation in strategy.plan(step) {
+                embassy_futures::block_on(async {
+                    device.copy(operation).await.unwrap();
+                })
+            }
         }
 
         assert_eq!(device.primary, IMAGE_B);
