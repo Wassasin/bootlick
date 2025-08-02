@@ -180,9 +180,13 @@ mod tests {
         assert!(device.wear.check_slot(PRIMARY, 1));
         assert!(device.wear.check_slot(SECONDARY, 1));
         assert!(
-            device
-                .wear
-                .check_slot(SCRATCH, device.page_count().get() as usize)
+            device.wear.check_slot(
+                SCRATCH,
+                device
+                    .page_count()
+                    .get()
+                    .div_ceil(device.scratch_page_count().get()) as usize
+            )
         );
     }
 }
