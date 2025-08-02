@@ -2,8 +2,8 @@ use core::num::NonZeroU16;
 
 use crate::{CopyOperation, Device, DeviceWithScratch, MemoryLocation, Slot, mock::WearTracker};
 
-const PAGE_COUNT: NonZeroU16 = NonZeroU16::new(3).unwrap();
-const SCRATCH_PAGE_COUNT: NonZeroU16 = NonZeroU16::new(1).unwrap();
+const PAGE_COUNT: NonZeroU16 = NonZeroU16::new(10).unwrap();
+const SCRATCH_PAGE_COUNT: NonZeroU16 = NonZeroU16::new(3).unwrap();
 
 pub struct MockDevice {
     pub primary: [u8; PAGE_COUNT.get() as usize],
@@ -12,15 +12,17 @@ pub struct MockDevice {
     pub wear: WearTracker,
 }
 
-pub const IMAGE_A: [u8; PAGE_COUNT.get() as usize] = [0x01, 0x02, 0x03];
-pub const IMAGE_B: [u8; PAGE_COUNT.get() as usize] = [0x04, 0x05, 0x06];
+pub const IMAGE_A: [u8; PAGE_COUNT.get() as usize] =
+    [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A];
+pub const IMAGE_B: [u8; PAGE_COUNT.get() as usize] =
+    [0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14];
 
 impl MockDevice {
     pub const fn new() -> MockDevice {
         MockDevice {
             primary: IMAGE_A,
             secondary: IMAGE_B,
-            scratch: [0xff],
+            scratch: [0xFF, 0xFF, 0xFF],
             wear: WearTracker::new(),
         }
     }

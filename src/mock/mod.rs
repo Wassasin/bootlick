@@ -1,12 +1,9 @@
+pub mod multi_scratch;
 pub mod single_scratch;
 
-use core::num::NonZeroU16;
 use std::collections::BTreeMap;
 
-use crate::{CopyOperation, Device, DeviceWithScratch, MemoryLocation, Slot};
-
-const PAGE_COUNT: NonZeroU16 = NonZeroU16::new(3).unwrap();
-const SCRATCH_PAGE_COUNT: NonZeroU16 = NonZeroU16::new(1).unwrap();
+use crate::{MemoryLocation, Slot};
 
 #[derive(Debug)]
 pub struct WearTracker(BTreeMap<MemoryLocation, usize>);

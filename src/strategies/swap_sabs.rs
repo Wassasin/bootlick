@@ -8,8 +8,6 @@
 //! Finally the scratch (S) memory page is written to the secondary (B) memory page.
 //!
 //! This results in the primary and secondary slots enduring a single erasure on every page for this strategy, whilst the scratch page endures `N` erasures, where `N` is the number of pages.
-//!
-//! **TODO** What if the scratch memory is several pages big?
 
 use core::num::NonZeroU16;
 
@@ -26,35 +24,42 @@ pub struct SwapSABS {
 /// Logical phases for the strategy to execute, to decouple raw steps from behaviour in a logical manner.
 #[derive(Debug)]
 enum Phase {
-    ToScratch { start: Page },
-    ToPrimary { start: Page },
-    ToSecondary { start: Page },
+    A2S,
+    B2A,
+    S2B,
 }
 
 impl Phase {
-    pub const fn from_step(step: Step, scratch_pages: NonZeroU16) -> Phase {
-        let start = Page((step.0 / 3) * scratch_pages.get());
-        match step.0 % 3 {
-            0 => Phase::ToScratch { start },
-            1 => Phase::ToPrimary { start },
-            2 => Phase::ToSecondary { start },
+    /// Get the current destination and starting page from the step number.
+    pub const fn from_step(step: Step, scratch_pages: NonZeroU16) -> (Phase, Page) {
+        let destination = match step.0 % 3 {
+            0 => Phase::A2S,
+            1 => Phase::B2A,
+            2 => Phase::S2B,
             _ => unreachable!(),
-        }
+        };
+
+        let start = Page((step.0 / 3) * scratch_pages.get());
+
+        (destination, start)
     }
 }
 
 impl Strategy for SwapSABS {
     fn last_step(&self) -> Step {
+        // Note(div_ceil): we might need to partially use the scratch pages for the final segment,
+        // if it is not a neat multiple.
+        let blocks = self.num_pages.get().div_ceil(self.scratch_pages.get());
+
         // A step for each AS, BA and SB step, where Scratch is fully filled.
-        let blocks = self.num_pages.get() / self.scratch_pages.get();
         Step(blocks * 3)
     }
 
     fn plan(&self, step: Step) -> impl Iterator<Item = CopyOperation> {
-        let phase = Phase::from_step(step, self.scratch_pages);
+        let (phase, start) = Phase::from_step(step, self.scratch_pages);
 
         let (from, to) = match phase {
-            Phase::ToScratch { start } => (
+            Phase::A2S => (
                 MemoryLocation {
                     slot: self.slot_primary,
                     page: start,
@@ -64,7 +69,7 @@ impl Strategy for SwapSABS {
                     page: Page(0),
                 },
             ),
-            Phase::ToPrimary { start } => (
+            Phase::B2A => (
                 MemoryLocation {
                     slot: self.slot_secondary,
                     page: start,
@@ -74,7 +79,7 @@ impl Strategy for SwapSABS {
                     page: start,
                 },
             ),
-            Phase::ToSecondary { start } => (
+            Phase::S2B => (
                 MemoryLocation {
                     slot: self.slot_scratch,
                     page: Page(0),
@@ -86,18 +91,22 @@ impl Strategy for SwapSABS {
             ),
         };
 
-        (0..self.scratch_pages.get())
-            .into_iter()
-            .map(move |page| CopyOperation {
-                from: MemoryLocation {
-                    slot: from.slot,
-                    page: Page(from.page.0 + page),
-                },
-                to: MemoryLocation {
-                    slot: to.slot,
-                    page: Page(to.page.0 + page),
-                },
-            })
+        // How many pages do we have left to move in order to finish?
+        let pages_left = self.num_pages.get() - start.0;
+
+        // How many pages are we doing in this step?
+        let pages_now = u16::min(pages_left, self.scratch_pages.get());
+
+        (0..pages_now).into_iter().map(move |page| CopyOperation {
+            from: MemoryLocation {
+                slot: from.slot,
+                page: Page(from.page.0 + page),
+            },
+            to: MemoryLocation {
+                slot: to.slot,
+                page: Page(to.page.0 + page),
+            },
+        })
     }
 }
 
@@ -111,12 +120,7 @@ mod tests {
     const SECONDARY: Slot = Slot(1);
     const SCRATCH: Slot = Slot(2);
 
-    #[test]
-    fn single_scratch() {
-        use crate::mock::single_scratch::{IMAGE_A, IMAGE_B, MockDevice};
-
-        let mut device = MockDevice::new();
-
+    fn perform_copy(device: &mut (impl Device + DeviceWithScratch)) {
         let strategy = SwapSABS {
             num_pages: device.page_count(),
             scratch_pages: device.scratch_page_count(),
@@ -125,17 +129,50 @@ mod tests {
             slot_scratch: SCRATCH,
         };
 
-        assert_eq!(device.primary, IMAGE_A);
-        assert_eq!(device.secondary, IMAGE_B);
-
         for step_i in 0..strategy.last_step().0 {
             let step = Step(step_i);
             for operation in strategy.plan(step) {
+                std::eprintln!("{:#?}", operation);
                 embassy_futures::block_on(async {
                     device.copy(operation).await.unwrap();
                 })
             }
         }
+    }
+
+    #[test]
+    fn single_scratch() {
+        use crate::mock::single_scratch::{IMAGE_A, IMAGE_B, MockDevice};
+
+        let mut device = MockDevice::new();
+
+        assert_eq!(device.primary, IMAGE_A);
+        assert_eq!(device.secondary, IMAGE_B);
+
+        perform_copy(&mut device);
+
+        assert_eq!(device.primary, IMAGE_B);
+        assert_eq!(device.secondary, IMAGE_A);
+
+        assert!(device.wear.check_slot(PRIMARY, 1));
+        assert!(device.wear.check_slot(SECONDARY, 1));
+        assert!(
+            device
+                .wear
+                .check_slot(SCRATCH, device.page_count().get() as usize)
+        );
+    }
+
+    #[test]
+    fn multi_scratch() {
+        use crate::mock::multi_scratch::{IMAGE_A, IMAGE_B, MockDevice};
+
+        let mut device = MockDevice::new();
+
+        assert_eq!(device.primary, IMAGE_A);
+        assert_eq!(device.secondary, IMAGE_B);
+
+        perform_copy(&mut device);
 
         assert_eq!(device.primary, IMAGE_B);
         assert_eq!(device.secondary, IMAGE_A);
