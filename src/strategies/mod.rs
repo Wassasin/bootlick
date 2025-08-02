@@ -3,8 +3,8 @@
 use crate::{CopyOperation, Step};
 
 pub mod copy_primary;
-pub mod swap_asbasb;
 pub mod swap_rotate;
+pub mod swap_sabs;
 pub mod swap_scootch;
 pub mod xip;
 

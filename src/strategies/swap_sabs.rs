@@ -1,11 +1,11 @@
-//! Strategy to swap two slots using 'AS BA SB', leaving both intact after finalizing.
+//! Strategy to swap two slots using 'S <- A <- B <- S', leaving both intact after finalizing.
 //!
 //! In other bootloaders also called 'swap scratch'.
 //! It employs a 'scratch' partition as a temporary buffer for one of the pages.
 //! This is an especially useful strategy if a memory type is available that is very wear resistant, like FRAM.
 //!
-//! The primary slot page is first copied over to the scratch memory, before writing the secondary slot page to the primary slot page.
-//! Finally the scratch memory page is written to the secondary memory page.
+//! The primary (A) slot page is first copied over to the scratch memory (S), before writing the secondary (B) slot page to the primary (A) slot page.
+//! Finally the scratch (S) memory page is written to the secondary (B) memory page.
 //!
 //! This results in the primary and secondary slots enduring a single erasure on every page for this strategy, whilst the scratch page endures `N` erasures, where `N` is the number of pages.
 //!
@@ -15,7 +15,7 @@ use core::num::NonZeroU16;
 
 use crate::{CopyOperation, MemoryLocation, Page, Slot, Step, strategies::Strategy};
 
-pub struct SwapASBASB {
+pub struct SwapSABS {
     num_pages: NonZeroU16,
     scratch_pages: NonZeroU16,
     slot_primary: Slot,
@@ -43,7 +43,7 @@ impl Phase {
     }
 }
 
-impl Strategy for SwapASBASB {
+impl Strategy for SwapSABS {
     fn last_step(&self) -> Step {
         // A step for each AS, BA and SB step, where Scratch is fully filled.
         let blocks = self.num_pages.get() / self.scratch_pages.get();
@@ -118,7 +118,7 @@ mod tests {
     fn single_scratch() {
         let mut device = MockDevice::new();
 
-        let strategy = SwapASBASB {
+        let strategy = SwapSABS {
             num_pages: device.page_count(),
             scratch_pages: device.scratch_page_count(),
             slot_primary: PRIMARY,
