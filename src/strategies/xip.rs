@@ -1,6 +1,6 @@
 //! Strategy for selecting a slot using eXecute In Place.
 
-use crate::{Step, strategies::Strategy};
+use crate::{Device, Step, strategies::Strategy};
 
 /// Strategy for selecting a slot using eXecute In Place.
 ///
@@ -10,7 +10,15 @@ use crate::{Step, strategies::Strategy};
 ///
 /// Good to note is that with Xip execution the signature is not continuously verified.
 /// Hence a man-in-the-middle might be possible if using external flash.
-pub struct Xip;
+pub struct Xip {
+    _private: (),
+}
+
+impl Xip {
+    pub fn new(_device: &impl Device) -> Self {
+        Self { _private: () }
+    }
+}
 
 impl Strategy for Xip {
     fn last_step(&self) -> Step {

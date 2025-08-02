@@ -2,7 +2,7 @@
 
 use crate::{CopyOperation, Step};
 
-pub mod copy_primary;
+pub mod copy;
 pub mod swap_rotate;
 pub mod swap_sabs;
 pub mod swap_scootch;

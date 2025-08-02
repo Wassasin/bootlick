@@ -148,7 +148,6 @@ mod tests {
         for step_i in 0..strategy.last_step().0 {
             let step = Step(step_i);
             for operation in strategy.plan(step) {
-                std::eprintln!("{:#?}", operation);
                 embassy_futures::block_on(async {
                     device.copy(operation).await.unwrap();
                 })
