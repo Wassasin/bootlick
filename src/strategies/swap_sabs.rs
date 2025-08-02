@@ -103,10 +103,7 @@ impl Strategy for SwapSABS {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        Device, DeviceWithScratch,
-        mock::{IMAGE_A, IMAGE_B, MockDevice},
-    };
+    use crate::{Device, DeviceWithScratch};
 
     use super::*;
 
@@ -116,6 +113,8 @@ mod tests {
 
     #[test]
     fn single_scratch() {
+        use crate::mock::single_scratch::{IMAGE_A, IMAGE_B, MockDevice};
+
         let mut device = MockDevice::new();
 
         let strategy = SwapSABS {

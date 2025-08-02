@@ -120,10 +120,7 @@ impl Strategy for SwapScootch {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        Device,
-        mock::{IMAGE_A, IMAGE_B, MockDevice},
-    };
+    use crate::Device;
 
     use super::*;
 
@@ -132,7 +129,9 @@ mod tests {
     const SCRATCH: Slot = Slot(2);
 
     #[test]
-    fn small() {
+    fn single_scratch() {
+        use crate::mock::single_scratch::{IMAGE_A, IMAGE_B, MockDevice};
+
         let mut device = MockDevice::new();
 
         let strategy = SwapScootch {
