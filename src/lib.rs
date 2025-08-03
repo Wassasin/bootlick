@@ -2,8 +2,10 @@
 #![no_std]
 
 use core::num::NonZeroU16;
+use serde::{Deserialize, Serialize};
 
 pub mod boot;
+pub mod state;
 pub mod strategies;
 
 #[cfg(test)]
@@ -48,7 +50,7 @@ pub trait DeviceSupportsXip: Device {}
 /// Image slot with regards to the bootloader.
 ///
 /// Memory layout describes in which memory and at what location each slot resides.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
 pub struct Slot(pub(crate) u8);
 
 /// Page number with regards to the bootloader.
@@ -69,7 +71,7 @@ pub struct Page(pub(crate) u16);
 /// Step numbers are strictly monotonical.
 /// Every step can be interrupted at any time, and after a step has been executed this has to be recorded in the persistant state.
 /// If the step is executed, but not yet recorded in the persistant state, it must be valid to execute the step again.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
 pub struct Step(pub(crate) u16);
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]

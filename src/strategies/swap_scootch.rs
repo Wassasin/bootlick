@@ -13,12 +13,17 @@
 
 use core::num::NonZeroU16;
 
+use serde::{Deserialize, Serialize};
+
 use crate::{
     CopyOperation, Device, DeviceWithPrimarySlot, DeviceWithScratch, MemoryLocation, Page, Slot,
     Step, strategies::Strategy,
 };
 
-#[derive(Clone, Debug)]
+/// Request to boot a secondary image.
+///
+/// When the secondary image fails to boot, will perform the swap again, restoring the original situation.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Request {
     pub slot_secondary: Slot,
 }

@@ -6,15 +6,23 @@
 //! Another advantage is that it does not require a scratch page.
 
 use core::num::NonZeroU16;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     CopyOperation, Device, DeviceWithPrimarySlot, MemoryLocation, Page, Slot, Step,
     strategies::Strategy,
 };
 
-#[derive(Clone, Debug)]
+/// Request to boot a secondary image, with an optional backup if the secondary image is invalid.
+///
+/// * Note that if the backup is not provided, the device might brick itself.
+/// * Note that the backup should have run successfully previously to ensure successful operation.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Request {
+    /// The image to copy to the primary slot.
     pub slot_secondary: Slot,
+    /// The image to copy to the primary slot when the secondary image fails to boot.
+    pub slot_backup: Option<Slot>,
 }
 
 pub struct Copy {
@@ -62,7 +70,13 @@ mod tests {
     use super::*;
 
     fn perform_copy(device: &mut (impl Device + DeviceWithPrimarySlot), slot_secondary: Slot) {
-        let strategy = Copy::new(device, Request { slot_secondary });
+        let strategy = Copy::new(
+            device,
+            Request {
+                slot_secondary,
+                slot_backup: None,
+            },
+        );
 
         for step_i in 0..strategy.last_step().0 {
             let step = Step(step_i);

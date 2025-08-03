@@ -1,6 +1,20 @@
 //! Strategy for selecting a slot using eXecute In Place.
 
-use crate::{Device, Step, strategies::Strategy};
+use serde::{Deserialize, Serialize};
+
+use crate::{Device, Slot, Step, strategies::Strategy};
+
+/// Request to boot a target image.
+///
+/// When the target image fails to boot, will boot the backup.
+///
+/// * Note that if the backup is not provided, the device might brick itself.
+/// * Note that the backup should have run successfully previously to ensure successful operation.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Request {
+    pub slot_target: Slot,
+    pub slot_backup: Option<Slot>,
+}
 
 /// Strategy for selecting a slot using eXecute In Place.
 ///
