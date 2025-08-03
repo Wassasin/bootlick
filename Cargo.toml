@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 serde = { version = "1.0", default-features = false, features = ["derive"] }
+embedded-storage-async = "0.4"
 
 cortex-m = { version = "0.7", optional = true }
 sequential-storage = { version = "5.0", optional = true }

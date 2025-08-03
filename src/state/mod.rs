@@ -29,3 +29,12 @@ pub struct State<S> {
     /// If no request is set, it will try to boot the primary image, if any exists.
     request: Option<Request<S>>,
 }
+
+/// Trait that arranges the state to be stored.
+#[allow(async_fn_in_trait)]
+pub trait StateStorage<S> {
+    type Error;
+
+    async fn store(&mut self, state: &State<S>) -> Result<(), Self::Error>;
+    async fn fetch(&mut self) -> Result<State<S>, Self::Error>;
+}
