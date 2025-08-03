@@ -3,6 +3,7 @@
 
 use core::num::NonZeroU16;
 
+pub mod boot;
 pub mod strategies;
 
 #[cfg(test)]
