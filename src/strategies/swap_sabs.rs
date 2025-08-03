@@ -14,8 +14,8 @@ use core::num::NonZeroU16;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CopyOperation, Device, DeviceWithPrimarySlot, DeviceWithScratch, MemoryLocation, Page, Slot,
-    Step, strategies::Strategy,
+    CopyOperation, DeviceWithPrimarySlot, DeviceWithScratch, MemoryLocation, Page, Slot, Step,
+    strategies::Strategy,
 };
 
 /// Request to boot a secondary image.
@@ -60,7 +60,7 @@ impl Phase {
 
 impl SwapSABS {
     pub fn new(
-        device: &(impl Device + DeviceWithScratch + DeviceWithPrimarySlot),
+        device: &(impl DeviceWithScratch + DeviceWithPrimarySlot),
         request: Request,
     ) -> Self {
         Self {
@@ -125,7 +125,7 @@ impl Strategy for SwapSABS {
         // How many pages are we doing in this step?
         let pages_now = u16::min(pages_left, self.scratch_pages.get());
 
-        (0..pages_now).into_iter().map(move |page| CopyOperation {
+        (0..pages_now).map(move |page| CopyOperation {
             from: MemoryLocation {
                 slot: from.slot,
                 page: Page(from.page.0 + page),

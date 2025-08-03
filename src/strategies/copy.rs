@@ -9,8 +9,7 @@ use core::num::NonZeroU16;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CopyOperation, Device, DeviceWithPrimarySlot, MemoryLocation, Page, Slot, Step,
-    strategies::Strategy,
+    CopyOperation, DeviceWithPrimarySlot, MemoryLocation, Page, Slot, Step, strategies::Strategy,
 };
 
 /// Request to boot a secondary image, with an optional backup if the secondary image is invalid.
@@ -32,7 +31,7 @@ pub struct Copy {
 }
 
 impl Copy {
-    pub fn new(device: &(impl Device + DeviceWithPrimarySlot), request: Request) -> Self {
+    pub fn new(device: &impl DeviceWithPrimarySlot, request: Request) -> Self {
         Self {
             request,
             num_pages: device.page_count(),
@@ -50,7 +49,6 @@ impl Strategy for Copy {
 
     fn plan(&self, _step: Step) -> impl Iterator<Item = CopyOperation> {
         (0..self.num_pages.get())
-            .into_iter()
             .map(Page)
             .map(move |page| CopyOperation {
                 from: MemoryLocation {
@@ -84,7 +82,7 @@ impl Strategy for Copy {
 mod tests {
     use super::*;
 
-    fn perform_copy(device: &mut (impl Device + DeviceWithPrimarySlot), strategy: &Copy) {
+    fn perform_copy(device: &mut impl DeviceWithPrimarySlot, strategy: &Copy) {
         for step_i in 0..strategy.last_step().0 {
             let step = Step(step_i);
             for operation in strategy.plan(step) {

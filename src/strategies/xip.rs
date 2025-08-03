@@ -44,15 +44,11 @@ impl Strategy for Xip {
     }
 
     fn revert(self) -> Option<Self> {
-        if let Some(slot_backup) = self.request.slot_backup {
-            Some(Self {
-                request: Request {
-                    slot_target: slot_backup,
-                    slot_backup: None,
-                },
-            })
-        } else {
-            None
-        }
+        self.request.slot_backup.map(|slot_backup| Self {
+            request: Request {
+                slot_target: slot_backup,
+                slot_backup: None,
+            },
+        })
     }
 }

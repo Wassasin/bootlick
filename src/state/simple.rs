@@ -81,7 +81,7 @@ where
             &mut self.nvm_cache,
             &mut data_buffer,
             &(),
-            &state,
+            state,
         )
         .await
     }

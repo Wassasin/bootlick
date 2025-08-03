@@ -16,8 +16,8 @@ use core::num::NonZeroU16;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CopyOperation, Device, DeviceWithPrimarySlot, DeviceWithScratch, MemoryLocation, Page, Slot,
-    Step, strategies::Strategy,
+    CopyOperation, DeviceWithPrimarySlot, DeviceWithScratch, MemoryLocation, Page, Slot, Step,
+    strategies::Strategy,
 };
 
 /// Request to boot a secondary image.
@@ -66,7 +66,7 @@ impl Phase {
 
 impl SwapScootch {
     pub fn new(
-        device: &(impl Device + DeviceWithScratch + DeviceWithPrimarySlot),
+        device: &(impl DeviceWithScratch + DeviceWithPrimarySlot),
         request: Request,
     ) -> Self {
         Self {
@@ -150,6 +150,8 @@ impl Strategy for SwapScootch {
 
 #[cfg(test)]
 mod tests {
+    use crate::Device;
+
     use super::*;
 
     #[test]
