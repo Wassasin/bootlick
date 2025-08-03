@@ -136,6 +136,11 @@ impl Strategy for SwapSABS {
             },
         })
     }
+
+    fn revert(self) -> Option<Self> {
+        // Reversion of swapping is the same operation.
+        Some(self)
+    }
 }
 
 #[cfg(test)]
@@ -146,10 +151,8 @@ mod tests {
 
     fn perform_copy(
         device: &mut (impl Device + DeviceWithScratch + DeviceWithPrimarySlot),
-        slot_secondary: Slot,
+        strategy: &SwapSABS,
     ) {
-        let strategy = SwapSABS::new(device, Request { slot_secondary });
-
         for step_i in 0..strategy.last_step().0 {
             let step = Step(step_i);
             for operation in strategy.plan(step) {
@@ -167,11 +170,17 @@ mod tests {
         };
 
         let mut device = MockDevice::new();
+        let strategy = SwapSABS::new(
+            &device,
+            Request {
+                slot_secondary: SECONDARY,
+            },
+        );
 
         assert_eq!(device.primary, IMAGE_A);
         assert_eq!(device.secondary, IMAGE_B);
 
-        perform_copy(&mut device, SECONDARY);
+        perform_copy(&mut device, &strategy);
 
         assert_eq!(device.primary, IMAGE_B);
         assert_eq!(device.secondary, IMAGE_A);
@@ -183,6 +192,13 @@ mod tests {
                 .wear
                 .check_slot(SCRATCH, device.page_count().get() as usize)
         );
+
+        let strategy = strategy.revert().unwrap();
+
+        perform_copy(&mut device, &strategy);
+
+        assert_eq!(device.primary, IMAGE_A);
+        assert_eq!(device.secondary, IMAGE_B);
     }
 
     #[test]
@@ -192,11 +208,17 @@ mod tests {
         };
 
         let mut device = MockDevice::new();
+        let strategy = SwapSABS::new(
+            &device,
+            Request {
+                slot_secondary: SECONDARY,
+            },
+        );
 
         assert_eq!(device.primary, IMAGE_A);
         assert_eq!(device.secondary, IMAGE_B);
 
-        perform_copy(&mut device, SECONDARY);
+        perform_copy(&mut device, &strategy);
 
         assert_eq!(device.primary, IMAGE_B);
         assert_eq!(device.secondary, IMAGE_A);
@@ -212,5 +234,12 @@ mod tests {
                     .div_ceil(device.scratch_page_count().get()) as usize
             )
         );
+
+        let strategy = strategy.revert().unwrap();
+
+        perform_copy(&mut device, &strategy);
+
+        assert_eq!(device.primary, IMAGE_A);
+        assert_eq!(device.secondary, IMAGE_B);
     }
 }

@@ -25,12 +25,12 @@ pub struct Request {
 /// Good to note is that with Xip execution the signature is not continuously verified.
 /// Hence a man-in-the-middle might be possible if using external flash.
 pub struct Xip {
-    _private: (),
+    request: Request,
 }
 
 impl Xip {
-    pub fn new(_device: &impl Device) -> Self {
-        Self { _private: () }
+    pub fn new(_device: &impl Device, request: Request) -> Self {
+        Self { request }
     }
 }
 
@@ -41,5 +41,18 @@ impl Strategy for Xip {
 
     fn plan(&self, _step: crate::Step) -> impl Iterator<Item = crate::CopyOperation> {
         core::iter::empty()
+    }
+
+    fn revert(self) -> Option<Self> {
+        if let Some(slot_backup) = self.request.slot_backup {
+            Some(Self {
+                request: Request {
+                    slot_target: slot_backup,
+                    slot_backup: None,
+                },
+            })
+        } else {
+            None
+        }
     }
 }

@@ -8,7 +8,7 @@ pub mod swap_scootch;
 pub mod xip;
 
 /// A slot activation strategy.
-pub trait Strategy {
+pub trait Strategy: Sized {
     /// The step which denotes that the swap has been completed, and that boot should occur.
     ///
     /// **Warning**: for this specific step and any subsequent step planning a `CopyOperation` is undefined behaviour.
@@ -16,4 +16,7 @@ pub trait Strategy {
 
     /// Plan the operations to be executed for a given step.
     fn plan(&self, step: Step) -> impl Iterator<Item = CopyOperation>;
+
+    /// Convert this strategy into one that performs the reverse operation, if at all possible.
+    fn revert(self) -> Option<Self>;
 }

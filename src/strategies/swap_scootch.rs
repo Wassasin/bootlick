@@ -141,6 +141,11 @@ impl Strategy for SwapScootch {
 
         core::iter::once(op)
     }
+
+    fn revert(self) -> Option<Self> {
+        // Reversion of swapping is the same operation.
+        Some(self)
+    }
 }
 
 #[cfg(test)]

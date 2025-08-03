@@ -63,21 +63,28 @@ impl Strategy for Copy {
                 },
             })
     }
+
+    fn revert(self) -> Option<Self> {
+        if let Some(slot_backup) = self.request.slot_backup {
+            Some(Self {
+                request: Request {
+                    slot_secondary: slot_backup,
+                    slot_backup: None,
+                },
+                num_pages: self.num_pages,
+                slot_primary: self.slot_primary,
+            })
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn perform_copy(device: &mut (impl Device + DeviceWithPrimarySlot), slot_secondary: Slot) {
-        let strategy = Copy::new(
-            device,
-            Request {
-                slot_secondary,
-                slot_backup: None,
-            },
-        );
-
+    fn perform_copy(device: &mut (impl Device + DeviceWithPrimarySlot), strategy: &Copy) {
         for step_i in 0..strategy.last_step().0 {
             let step = Step(step_i);
             for operation in strategy.plan(step) {
@@ -90,19 +97,37 @@ mod tests {
 
     #[test]
     fn test() {
-        use crate::mock::single_scratch::{IMAGE_A, IMAGE_B, MockDevice, PRIMARY, SECONDARY};
+        use crate::mock::tri_slot::{ALPHA, BETA, IMAGE_A, IMAGE_B, MockDevice, PRIMARY};
 
         let mut device = MockDevice::new();
+        let strategy = Copy::new(
+            &device,
+            Request {
+                slot_secondary: BETA,
+                slot_backup: Some(ALPHA),
+            },
+        );
 
         assert_eq!(device.primary, IMAGE_A);
-        assert_eq!(device.secondary, IMAGE_B);
+        assert_eq!(device.alpha, IMAGE_A);
+        assert_eq!(device.beta, IMAGE_B);
 
-        perform_copy(&mut device, SECONDARY);
+        perform_copy(&mut device, &strategy);
 
         assert_eq!(device.primary, IMAGE_B);
-        assert_eq!(device.secondary, IMAGE_B);
+        assert_eq!(device.alpha, IMAGE_A);
+        assert_eq!(device.beta, IMAGE_B);
 
         assert!(device.wear.check_slot(PRIMARY, 1));
-        assert!(device.wear.check_slot(SECONDARY, 0));
+        assert!(device.wear.check_slot(ALPHA, 0));
+        assert!(device.wear.check_slot(BETA, 0));
+
+        let strategy = strategy.revert().unwrap();
+
+        perform_copy(&mut device, &strategy);
+
+        assert_eq!(device.primary, IMAGE_A);
+        assert_eq!(device.alpha, IMAGE_A);
+        assert_eq!(device.beta, IMAGE_B);
     }
 }

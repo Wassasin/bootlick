@@ -1,5 +1,6 @@
 pub mod multi_scratch;
 pub mod single_scratch;
+pub mod tri_slot;
 
 use std::collections::BTreeMap;
 
