@@ -24,7 +24,7 @@ pub trait Device {
     async fn copy(&mut self, operation: CopyOperation) -> Result<(), Error>;
 
     /// Boot a specific memory slot.
-    fn boot(slot: Slot) -> !;
+    fn boot(self, slot: Slot) -> !;
 
     /// All image slots should have the same memory size.
     /// Note that these are `Page` in the bootloader sense, which is decoupled from the underlying memory storage.
@@ -51,7 +51,7 @@ pub trait DeviceSupportsXip: Device {}
 ///
 /// Memory layout describes in which memory and at what location each slot resides.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
-pub struct Slot(pub(crate) u8);
+pub struct Slot(pub u8);
 
 /// Page number with regards to the bootloader.
 ///

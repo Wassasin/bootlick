@@ -54,7 +54,7 @@ impl Device for MockDevice {
         Ok(())
     }
 
-    fn boot(_slot: Slot) -> ! {
+    fn boot(self, _slot: Slot) -> ! {
         unimplemented!()
     }
 

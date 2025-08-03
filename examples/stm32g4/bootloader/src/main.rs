@@ -4,19 +4,76 @@
 mod bsp;
 mod fake;
 mod partitions;
-mod state;
 
+use bootlick::{
+    state::{simple::SimpleStateStorage, State, StateStorage},
+    strategies::swap_scootch::{self, SwapScootch},
+    Device, DeviceWithPrimarySlot, DeviceWithScratch, Slot,
+};
+use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::Spawner;
-use partition_manager::PartitionManager;
+use embassy_stm32::{flash::Blocking, gpio::Output, mode::Async, spi::Spi};
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use partition_manager::{Partition, PartitionManager, RW};
+use w25::W25;
 
 use crate::{
+    fake::Nothing,
     partitions::{
         ExternalStorageConfig, ExternalStorageMap, InternalStorageConfig, InternalStorageMap,
     },
-    state::{PersistentState, Slot, State},
 };
 
 use {defmt_rtt as _, panic_halt as _};
+
+struct ThisDevice<'a> {
+    slot_primary: Partition<'a, embassy_stm32::flash::Flash<'static, Blocking>, RW, NoopRawMutex>,
+    slot_scratch: Partition<
+        'a,
+        W25<
+            w25::Q,
+            SpiDevice<'static, NoopRawMutex, Spi<'static, Async>, Output<'static>>,
+            Nothing,
+            Nothing,
+        >,
+        RW,
+        NoopRawMutex,
+    >,
+}
+
+impl Device for ThisDevice<'_> {
+    async fn copy(&mut self, operation: bootlick::CopyOperation) -> Result<(), bootlick::Error> {
+        todo!()
+    }
+
+    fn boot(self, slot: Slot) -> ! {
+        defmt::info!("Boot into {}", slot);
+        loop {
+            cortex_m::asm::wfe();
+        }
+    }
+
+    fn page_count(&self) -> core::num::NonZeroU16 {
+        use embedded_storage_async::nor_flash::{NorFlash, ReadNorFlash};
+        self.slot_primary.capacity() / embassy_stm32::flash::Flash::ERASE_SIZE
+    }
+}
+
+impl DeviceWithPrimarySlot for ThisDevice<'_> {
+    fn get_primary(&self) -> Slot {
+        Slot(0)
+    }
+}
+
+impl DeviceWithScratch for ThisDevice<'_> {
+    fn scratch_page_count(&self) -> core::num::NonZeroU16 {
+        todo!()
+    }
+
+    fn get_scratch(&self) -> Slot {
+        Slot(2)
+    }
+}
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) -> ! {
@@ -31,8 +88,8 @@ async fn main(spawner: Spawner) -> ! {
 
     defmt::info!("device: {}", ext_flash.device_id().await.unwrap());
 
-    let mut int_flash: PartitionManager<_> = PartitionManager::new(&mut int_flash);
-    let mut ext_flash: PartitionManager<_> = PartitionManager::new(&mut ext_flash);
+    let mut int_flash: PartitionManager<_> = PartitionManager::new(int_flash);
+    let mut ext_flash: PartitionManager<_> = PartitionManager::new(ext_flash);
 
     let InternalStorageMap {
         mut bootloader,
@@ -44,99 +101,21 @@ async fn main(spawner: Spawner) -> ! {
         mut slot_secundary,
     } = ext_flash.map(ExternalStorageConfig::new());
 
-    let mut state = PersistentState::new(bl_state).await;
+    let mut state_storage = SimpleStateStorage::new(bl_state);
 
-    defmt::info!("State: {}", state.get());
+    let state: State<swap_scootch::Request> = state_storage.fetch().await.unwrap();
+    let device = ThisDevice {
+        slot_primary,
+        slot_scratch: bl_swap,
+    };
 
-    state
-        .store(State::Request {
-            current: Slot(0),
-            target: Slot(1),
-        })
-        .await;
+    if let Some(request) = state.request {
+        let strategy = SwapScootch::new(&device, request.strategy);
 
-    loop {
-        match *state.get() {
-            State::Initial => {
-                boot_into(Slot(0)).await;
-            }
-            State::Trialing { target, old } => {
-                // We never got here during update, but only after reboot, which means we failed.
-                state
-                    .store(State::Returning {
-                        failed: target,
-                        old,
-                        step: 0,
-                    })
-                    .await
-            }
-            State::Failed { current, failed: _ } => boot_into(current).await,
-            State::Confirmed { target } => boot_into(target).await,
-            State::Request { current, target } => {
-                state
-                    .store(State::Swapping {
-                        target,
-                        old: current,
-                        step: 0,
-                    })
-                    .await
-            }
-            State::Swapping { target, old, step } => {
-                step_swapmove(old, target, step).await;
-
-                if step < get_step_count() {
-                    state
-                        .store(State::Swapping {
-                            target,
-                            old,
-                            step: step + 1,
-                        })
-                        .await;
-                } else {
-                    state.store(State::Trialing { target, old }).await;
-                    boot_into(target).await;
-                }
-            }
-            State::Returning { failed, old, step } => {
-                step_swapmove(failed, old, step).await;
-
-                if step < get_step_count() {
-                    state
-                        .store(State::Returning {
-                            failed,
-                            old,
-                            step: step + 1,
-                        })
-                        .await;
-                } else {
-                    state
-                        .store(State::Failed {
-                            current: old,
-                            failed,
-                        })
-                        .await;
-                    boot_into(old).await;
-                }
-            }
-        }
+        todo!()
+    } else {
+        defmt::info!("No request active, boot to primary!");
+        let primary = device.get_primary();
+        device.boot(primary)
     }
-}
-
-async fn boot_into(slot: Slot) -> ! {
-    defmt::info!("Boot into {}", slot);
-    loop {
-        embassy_futures::yield_now().await;
-    }
-}
-
-async fn step_swapmove(a: Slot, b: Slot, step: u16) {
-    defmt::info!("Step {}/{}", step, get_step_count());
-}
-
-fn get_step_count() -> u16 {
-    // Move last sector to scratch
-    // Scootch all pages one page
-    //
-    10
-    // TODO
 }

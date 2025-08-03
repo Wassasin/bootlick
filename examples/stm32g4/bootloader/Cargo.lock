@@ -84,9 +84,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "bootlick"
+version = "0.1.0"
+dependencies = [
+ "embedded-storage-async",
+ "postcard",
+ "sequential-storage",
+ "serde",
+]
+
+[[package]]
 name = "bootloader"
 version = "0.1.0"
 dependencies = [
+ "bootlick",
  "cortex-m",
  "cortex-m-rt",
  "defmt 1.0.1",
@@ -99,6 +110,7 @@ dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-async",
  "embedded-io-async",
+ "embedded-storage",
  "embedded-storage-async",
  "panic-halt",
  "partition-manager",
