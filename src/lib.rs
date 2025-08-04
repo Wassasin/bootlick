@@ -76,8 +76,8 @@ pub struct Step(pub(crate) u16);
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct MemoryLocation {
-    slot: Slot,
-    page: Page,
+    pub slot: Slot,
+    pub page: Page,
 }
 
 /// Perform an erase of `to` (if necessary) and copy `from` to `to`, leaving `from` intact.
